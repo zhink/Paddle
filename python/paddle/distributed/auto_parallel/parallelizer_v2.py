@@ -107,11 +107,6 @@ class Parallelizer:
             )
             # Do reshard process
             time0 = time.time()
-            micro_bsz = (
-                1
-                if not self._strategy.pipeline.enable
-                else self._strategy.pipeline.micro_batch_size
-            )
             set_grad_var_shape(dist_main_prog, self._dist_context)
             resharder = Resharder(
                 dist_main_prog,
@@ -119,7 +114,6 @@ class Parallelizer:
                 rank,
                 self._dist_context,
                 dist_params_grads,
-                micro_bsz,
             )
             resharder.reshard()
             self._logger.debug(
