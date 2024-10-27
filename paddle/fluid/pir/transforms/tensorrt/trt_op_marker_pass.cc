@@ -101,7 +101,7 @@ class ReduceCommonOpPattern : public pir::OpRewritePattern<OpType> {
 
     if constexpr (std::is_same_v<OpType, paddle::dialect::MeanOp> ||
                   std::is_same_v<OpType, paddle::dialect::AnyOp> ||
-                  std::is_same_v<OpType, paddle::dialect::MeanOp>) {
+                  std::is_same_v<OpType, paddle::dialect::AllOp>) {
       if (!op->HasAttribute("axis")) {
         VLOG(3) << "The axis attribute does not exist";
         return false;
