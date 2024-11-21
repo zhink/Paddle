@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import typing
 
 __is_metainfo_generated = False
@@ -263,12 +264,12 @@ from .tensor.logic import (
     is_empty,
     is_tensor,
     isclose,
+    less,
+    less_,
     less_equal,
     less_equal_,
     less_than,
-    less_than as less,
     less_than_,
-    less_than_ as less_,
     logical_and,
     logical_and_,
     logical_not,
@@ -771,6 +772,10 @@ from .pir_utils import IrGuard
 ir_guard = IrGuard()
 ir_guard._switch_to_pir()
 
+# Constants
+newaxis: None = None
+inf = math.inf
+
 __all__ = [
     'block_diag',
     'iinfo',
@@ -1204,4 +1209,6 @@ __all__ = [
     'positive',
     'from_dlpack',
     'to_dlpack',
+    'inf',
+    'newaxis',
 ]

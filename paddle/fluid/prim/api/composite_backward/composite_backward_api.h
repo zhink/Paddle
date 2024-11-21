@@ -50,12 +50,15 @@ void pow_grad(const Tensor& x,
 template <typename T>
 void hardswish_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    auto offset = full<T>(common::vectorize(x.dims()), 3.0, x.dtype());
+    auto offset =
+        full<T>(common::vectorize(x.dims()), 3.0, x.dtype(), x.place());
     auto condition = less_equal<T>(x, offset);
     auto tmp1 = where<T>(condition, out_grad * ((x / 3.0) + 0.5), out_grad);
     auto res = where<T>(
-        less_than<T>(x, full<T>(common::vectorize(x.dims()), -3.0, x.dtype())),
-        full<T>(common::vectorize(x.dims()), 0.0, x.dtype()),
+        less_than<T>(
+            x,
+            full<T>(common::vectorize(x.dims()), -3.0, x.dtype(), x.place())),
+        full<T>(common::vectorize(x.dims()), 0.0, x.dtype(), x.place()),
         tmp1);
     set_output<T>(res, x_grad);
   }
@@ -68,7 +71,8 @@ void leaky_relu_grad(const Tensor& out,
                      Tensor* x_grad) {
   if (x_grad) {
     auto condition = greater_than<T>(
-        out, full<T>(common::vectorize(out.dims()), 0.0, out.dtype()));
+        out,
+        full<T>(common::vectorize(out.dims()), 0.0, out.dtype(), out.place()));
     auto res = where<T>(condition, out_grad, out_grad * negative_slope);
     set_output<T>(res, x_grad);
   }
@@ -102,7 +106,8 @@ template <typename T>
 void relu_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     auto mask = greater_than<T>(
-        out, full<T>(common::vectorize(out.dims()), 0.0, out.dtype()));
+        out,
+        full<T>(common::vectorize(out.dims()), 0.0, out.dtype(), out.place()));
     auto res = cast<T>(mask, out.dtype()) * out_grad;
     set_output<T>(res, x_grad);
   }
@@ -124,9 +129,11 @@ void softmax_grad(const Tensor& out,
           new_out_grad - out * sum<T>(new_out_grad, {axis}, out.dtype(), true);
       set_output<T>(tmp_x_grad, x_grad);
     } else {
-      set_output<T>(
-          full<T>(common::vectorize(out_grad.dims()), 0.0, out_grad.dtype()),
-          x_grad);
+      set_output<T>(full<T>(common::vectorize(out_grad.dims()),
+                            0.0,
+                            out_grad.dtype(),
+                            out_grad.place()),
+                    x_grad);
     }
   }
 }
@@ -145,7 +152,8 @@ void gather_grad(const Tensor& x,
                  const Tensor& out_grad,
                  const Scalar& axis,
                  Tensor* grad_x) {
-  auto zero_tensor = full<T>(common::vectorize(x.dims()), 0.0, x.dtype());
+  auto zero_tensor =
+      full<T>(common::vectorize(x.dims()), 0.0, x.dtype(), x.place());
   std::vector<int> tmp_perm;
 
   // change axis to rank 0
@@ -283,9 +291,14 @@ void subtract_grad(const Tensor& x,
         by_pass<T>(scale_out_grad, dy);
       } else {
         auto dy_reduce_res =
-            scale_out_grad.sum(common::vectorize(reduce_dim), y.dtype(), false);
-        auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
-        set_output<T>(dy_tmp, dy);
+            scale_out_grad.sum(common::vectorize(reduce_dim),
+                               y.dtype(),
+                               scale_out_grad.dims().size() == y.dims().size());
+        if (dy_reduce_res.dims() != y.dims()) {
+          dy_reduce_res =
+              reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
+        }
+        set_output<T>(dy_reduce_res, dy);
       }
     } else {
       by_pass<T>(scale_out_grad, dy);
@@ -299,9 +312,14 @@ void subtract_grad(const Tensor& x,
         by_pass<T>(out_grad, dx);
       } else {
         auto dx_reduce_res =
-            out_grad.sum(common::vectorize(reduce_dim), x.dtype(), false);
-        auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
-        set_output<T>(dx_tmp, dx);
+            out_grad.sum(common::vectorize(reduce_dim),
+                         x.dtype(),
+                         out_grad.dims().size() == x.dims().size());
+        if (dx_reduce_res.dims() != x.dims()) {
+          dx_reduce_res =
+              reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
+        }
+        set_output<T>(dx_reduce_res, dx);
       }
     } else {
       by_pass<T>(out_grad, dx);
@@ -324,9 +342,14 @@ void add_grad(const Tensor& x,
         by_pass<T>(out_grad, dy);
       } else {
         auto dy_reduce_res =
-            out_grad.sum(common::vectorize(reduce_dim), y.dtype(), false);
-        auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
-        set_output<T>(dy_tmp, dy);
+            out_grad.sum(common::vectorize(reduce_dim),
+                         y.dtype(),
+                         out_grad.dims().size() == y.dims().size());
+        if (dy_reduce_res.dims() != y.dims()) {
+          dy_reduce_res =
+              reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
+        }
+        set_output<T>(dy_reduce_res, dy);
       }
     } else {
       by_pass<T>(out_grad, dy);
@@ -340,9 +363,14 @@ void add_grad(const Tensor& x,
         by_pass<T>(out_grad, dx);
       } else {
         auto dx_reduce_res =
-            out_grad.sum(common::vectorize(reduce_dim), x.dtype(), false);
-        auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
-        set_output<T>(dx_tmp, dx);
+            out_grad.sum(common::vectorize(reduce_dim),
+                         x.dtype(),
+                         out_grad.dims().size() == x.dims().size());
+        if (dx_reduce_res.dims() != x.dims()) {
+          dx_reduce_res =
+              reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
+        }
+        set_output<T>(dx_reduce_res, dx);
       }
     } else {
       by_pass<T>(out_grad, dx);
@@ -416,9 +444,14 @@ void divide_grad(const Tensor& x,
         set_output<T>(dy_res, dy);
       } else {
         auto dy_reduce_res =
-            dy_res.sum(common::vectorize(reduce_dim), y.dtype(), false);
-        auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
-        set_output<T>(dy_tmp, dy);
+            dy_res.sum(common::vectorize(reduce_dim),
+                       y.dtype(),
+                       dy_res.dims().size() == y.dims().size());
+        if (dy_reduce_res.dims() != y.dims()) {
+          dy_reduce_res =
+              reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
+        }
+        set_output<T>(dy_reduce_res, dy);
       }
     } else {
       set_output<T>(dy_res, dy);
@@ -434,9 +467,14 @@ void divide_grad(const Tensor& x,
         set_output<T>(dx_res, dx);
       } else {
         auto dx_reduce_res =
-            dx_res.sum(common::vectorize(reduce_dim), x.dtype(), false);
-        auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
-        set_output<T>(dx_tmp, dx);
+            dx_res.sum(common::vectorize(reduce_dim),
+                       x.dtype(),
+                       dx_res.dims().size() == x.dims().size());
+        if (dx_reduce_res.dims() != x.dims()) {
+          dx_reduce_res =
+              reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
+        }
+        set_output<T>(dx_reduce_res, dx);
       }
     } else {
       set_output<T>(dx_res, dx);
@@ -462,9 +500,14 @@ void elementwise_pow_grad(const Tensor& x,
         set_output<T>(dy_res, dy);
       } else {
         auto dy_reduce_res =
-            dy_res.sum(common::vectorize(reduce_dim), y.dtype(), false);
-        auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
-        set_output<T>(dy_tmp, dy);
+            dy_res.sum(common::vectorize(reduce_dim),
+                       y.dtype(),
+                       dy_res.dims().size() == y.dims().size());
+        if (dy_reduce_res.dims() != y.dims()) {
+          dy_reduce_res =
+              reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
+        }
+        set_output<T>(dy_reduce_res, dy);
       }
     } else {
       set_output<T>(dy_res, dy);
@@ -482,9 +525,14 @@ void elementwise_pow_grad(const Tensor& x,
         set_output<T>(dx_res, dx);
       } else {
         auto dx_reduce_res =
-            dx_res.sum(common::vectorize(reduce_dim), x.dtype(), false);
-        auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
-        set_output<T>(dx_tmp, dx);
+            dx_res.sum(common::vectorize(reduce_dim),
+                       x.dtype(),
+                       dx_res.dims().size() == x.dims().size());
+        if (dx_reduce_res.dims() != x.dims()) {
+          dx_reduce_res =
+              reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
+        }
+        set_output<T>(dx_reduce_res, dx);
       }
 
     } else {
@@ -514,8 +562,10 @@ void rsqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
 template <typename T>
 void floor_grad(const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    auto zero_tensor =
-        full<T>(common::vectorize(out_grad.dims()), 0.0, out_grad.dtype());
+    auto zero_tensor = full<T>(common::vectorize(out_grad.dims()),
+                               0.0,
+                               out_grad.dtype(),
+                               out_grad.place());
     set_output<T>(zero_tensor, x_grad);
   }
 }
@@ -596,8 +646,10 @@ void multiply_grad(const Tensor& x,
         set_output<T>(x_grad_unreduce, x_grad);
       } else {
         auto x_grad_reduced = x_grad_unreduce.sum(
-            common::vectorize(axes), x_grad_unreduce.dtype(), false);
-        if (x_grad_reduced.dims().size() != x.dims().size()) {
+            common::vectorize(axes),
+            x_grad_unreduce.dtype(),
+            x_grad_unreduce.dims().size() == x.dims().size());
+        if (x_grad_reduced.dims() != x.dims()) {
           x_grad_reduced = reshape<T>(x_grad_reduced, x.shape());
         }
         set_output<T>(x_grad_reduced, x_grad);
@@ -614,8 +666,10 @@ void multiply_grad(const Tensor& x,
         set_output<T>(y_grad_unreduce, y_grad);
       } else {
         auto y_grad_reduced = y_grad_unreduce.sum(
-            common::vectorize(axes), y_grad_unreduce.dtype(), false);
-        if (y_grad_reduced.dims().size() != y.dims().size()) {
+            common::vectorize(axes),
+            y_grad_unreduce.dtype(),
+            y_grad_unreduce.dims().size() != y.dims().size());
+        if (y_grad_reduced.dims() != y.dims()) {
           y_grad_reduced = reshape<T>(y_grad_reduced, y.shape());
         }
         set_output<T>(y_grad_reduced, y_grad);
@@ -638,8 +692,10 @@ void expand_grad(const Tensor& x,
       if (!axes.size()) {
         by_pass<T>(out_grad, x_grad);
       } else {
-        auto reduced = out_grad.sum(common::vectorize(axes), x.dtype(), false);
-        if (reduced.dims().size() != x.dims().size()) {
+        auto reduced = out_grad.sum(common::vectorize(axes),
+                                    x.dtype(),
+                                    out_grad.dims().size() == x.dims().size());
+        if (reduced.dims() != x.dims()) {
           reduced = reshape<T>(reduced, x.shape());
         }
         set_output<T>(reduced, x_grad);
@@ -745,7 +801,7 @@ void slice_grad(const Tensor& input,
     }
     Tensor reshape_out_grad;
     if (out_grad.shape().size() == 0) {
-      reshape_out_grad = full<T>({1}, 1, input.dtype());
+      reshape_out_grad = full<T>({1}, 1, input.dtype(), input.place());
     } else {
       reshape_out_grad = out_grad;
     }
@@ -1059,7 +1115,8 @@ void topk_grad(const Tensor& x,
       by_pass<T>(out_grad, x_grad);
       return;
     }
-    auto zero_tensor = full<T>(common::vectorize(x.dims()), 0, x.dtype());
+    auto zero_tensor =
+        full<T>(common::vectorize(x.dims()), 0, x.dtype(), x.place());
     auto x_grad_tmp = put_along_axis<T>(zero_tensor, indices, out_grad, axis);
     set_output<T>(x_grad_tmp, x_grad);
   }
@@ -1071,7 +1128,8 @@ void gather_nd_grad(const Tensor& x,
                     const Tensor& out_grad,
                     Tensor* x_grad) {
   if (x_grad) {
-    auto zero_tensor = full<T>(common::vectorize(x.dims()), 0.0, x.dtype());
+    auto zero_tensor =
+        full<T>(common::vectorize(x.dims()), 0.0, x.dtype(), x.place());
     auto x_grad_tmp = scatter_nd_add<T>(zero_tensor, index, out_grad);
     set_output<T>(x_grad_tmp, x_grad);
   }
@@ -1088,13 +1146,13 @@ void cumprod_grad(const Tensor& x,
   if (x_grad) {
     // dx = cumsum(out * out_grad, dim, false, exclusive, !reverse) / x
     std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
-    auto zero_tensor = full<T>(x_dim, 0.0, x.dtype());
+    auto zero_tensor = full<T>(x_dim, 0.0, x.dtype(), x.place());
     auto zero_mask = cast<T>(equal<T>(x, zero_tensor), x.dtype());
     // determine the index of first zero
     auto zero_mask_cumsum_exclusive =
         cumsum<T>(zero_mask, dim, false, true, reverse);
     auto zero_mask_cumsum = scale<T>(zero_mask_cumsum_exclusive, 2) + zero_mask;
-    auto ones_tensor = full<T>(x_dim, 1.0, x.dtype());
+    auto ones_tensor = full<T>(x_dim, 1.0, x.dtype(), x.place());
     auto first_zero_mask =
         cast<T>(equal<T>(zero_mask_cumsum, ones_tensor), x.dtype());
     // compute the grad for position with value not equal to 0
@@ -1234,7 +1292,8 @@ void max_grad(const Tensor& x,
   if (!x_grad) {
     return;
   }
-  auto zero_tensor = full<T>(common::vectorize(x.dims()), 0.0, x.dtype());
+  auto zero_tensor =
+      full<T>(common::vectorize(x.dims()), 0.0, x.dtype(), x.place());
   std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
   int64_t axis_size = axis.size();
   int64_t x_dim_size = x_dim.size();
@@ -1286,7 +1345,8 @@ void min_grad(const Tensor& x,
   if (!x_grad) {
     return;
   }
-  auto zero_tensor = full<T>(common::vectorize(x.dims()), 0.0, x.dtype());
+  auto zero_tensor =
+      full<T>(common::vectorize(x.dims()), 0.0, x.dtype(), x.place());
   std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
   int64_t axis_size = axis.size();
   int64_t x_dim_size = x_dim.size();
@@ -1338,8 +1398,9 @@ template <typename T>
 void erf_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     auto m_2_sqrt_pi =
-        full<T>(common::vectorize(x.dims()), M_2_SQRTPI, x.dtype());
-    auto neg_one = full<T>(common::vectorize(x.dims()), -1.0, x.dtype());
+        full<T>(common::vectorize(x.dims()), M_2_SQRTPI, x.dtype(), x.place());
+    auto neg_one =
+        full<T>(common::vectorize(x.dims()), -1.0, x.dtype(), x.place());
     auto neg_tmp = neg_one * x * x;
     auto mul_tmp = m_2_sqrt_pi * exp<T>(neg_tmp);
     set_output<T>(out_grad * mul_tmp, x_grad);
@@ -1362,9 +1423,14 @@ void maximum_grad(const Tensor& x,
         set_output<T>(dx_res, x_grad);
       } else {
         auto dx_reduce_res =
-            dx_res.sum(common::vectorize(reduce_dim), x.dtype(), false);
-        auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
-        set_output<T>(dx_tmp, x_grad);
+            dx_res.sum(common::vectorize(reduce_dim),
+                       x.dtype(),
+                       dx_res.dims().size() == x.dims().size());
+        if (dx_reduce_res.dims() != x.dims()) {
+          dx_reduce_res =
+              reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
+        }
+        set_output<T>(dx_reduce_res, x_grad);
       }
     } else {
       set_output<T>(dx_res, x_grad);
@@ -1381,9 +1447,14 @@ void maximum_grad(const Tensor& x,
         set_output<T>(dy_res, y_grad);
       } else {
         auto dy_reduce_res =
-            dy_res.sum(common::vectorize(reduce_dim), y.dtype(), false);
-        auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
-        set_output<T>(dy_tmp, y_grad);
+            dy_res.sum(common::vectorize(reduce_dim),
+                       y.dtype(),
+                       dy_res.dims().size() == y.dims().size());
+        if (dy_reduce_res.dims() != y.dims()) {
+          dy_reduce_res =
+              reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
+        }
+        set_output<T>(dy_reduce_res, y_grad);
       }
     } else {
       set_output<T>(dy_res, y_grad);
@@ -1440,8 +1511,10 @@ void scatter_grad(const Tensor& index,
                   Tensor* x_grad,
                   Tensor* updates_grad) {
   if (x_grad) {
-    auto zero_tensor =
-        full<T>(common::vectorize(updates.dims()), 0.0, updates.dtype());
+    auto zero_tensor = full<T>(common::vectorize(updates.dims()),
+                               0.0,
+                               updates.dtype(),
+                               updates.place());
     auto tmp_grad = scatter<T>(out_grad, index, zero_tensor, false);
     set_output<T>(tmp_grad, x_grad);
   }
@@ -1459,7 +1532,8 @@ void scatter_grad(const Tensor& index,
       // updates.
       decltype(updates_dims) padding_dims = updates_dims;
       padding_dims[0] = updates_dims[0] - index_dims[0];
-      auto padding_zeros = full<T>(padding_dims, 0, updates.dtype());
+      auto padding_zeros =
+          full<T>(padding_dims, 0, updates.dtype(), updates.place());
       tmp_updates_grad =
           concat<T>({tmp_updates_grad, std::move(padding_zeros)}, 0);
     }
@@ -1524,8 +1598,10 @@ void batch_norm_grad(const Tensor& x,
   Tensor rsqrt_var;
 
   if (use_global_stats) {
-    auto eps =
-        full<T>(common::vectorize(run_var.dims()), epsilon, run_var.dtype());
+    auto eps = full<T>(common::vectorize(run_var.dims()),
+                       epsilon,
+                       run_var.dtype(),
+                       run_var.place());
     mean_data = run_mean;
     rsqrt_var = (run_var + eps).pow(-0.5);
   } else {
@@ -1692,8 +1768,9 @@ void instance_norm_grad(const Tensor& x,
   // x_hat).mean((h,w)))
   if (x_grad) {
     auto scale_data =
-        reshape<T>(scale.get_ptr() ? scale.get()
-                                   : full<T>(IntArray({c}), 1., x.dtype()),
+        reshape<T>(scale.get_ptr()
+                       ? scale.get()
+                       : full<T>(IntArray({c}), 1., x.dtype(), x.place()),
                    IntArray({1, c, 1, 1}))
             .tile(IntArray({n, 1, h, w}));
     auto promoted_scale = scale_data;
@@ -1830,9 +1907,14 @@ void minimum_grad(const Tensor& x,
         set_output<T>(dx_res, x_grad);
       } else {
         auto dx_reduce_res =
-            dx_res.sum(common::vectorize(reduce_dim), x.dtype(), false);
-        auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
-        set_output<T>(dx_tmp, x_grad);
+            dx_res.sum(common::vectorize(reduce_dim),
+                       x.dtype(),
+                       dx_res.dims().size() == x.dims().size());
+        if (dx_reduce_res.dims() != x.dims()) {
+          dx_reduce_res =
+              reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
+        }
+        set_output<T>(dx_reduce_res, x_grad);
       }
     } else {
       set_output<T>(dx_res, x_grad);
@@ -1849,9 +1931,14 @@ void minimum_grad(const Tensor& x,
         set_output<T>(dy_res, y_grad);
       } else {
         auto dy_reduce_res =
-            dy_res.sum(common::vectorize(reduce_dim), y.dtype(), false);
-        auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
-        set_output<T>(dy_tmp, y_grad);
+            dy_res.sum(common::vectorize(reduce_dim),
+                       y.dtype(),
+                       dy_res.dims().size() == y.dims().size());
+        if (dy_reduce_res.dims() != y.dims()) {
+          dy_reduce_res =
+              reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
+        }
+        set_output<T>(dy_reduce_res, y_grad);
       }
     } else {
       set_output<T>(dy_res, y_grad);
@@ -1872,7 +1959,8 @@ void tile_grad(const Tensor& x,
       int size = out_grad_shape[i] / repeat_times_data[i];
       std::vector<int> sections(repeat_times_data[i], size);
       auto split_arr = split<T>(result, IntArray(sections), i);
-      result = full<T>(common::vectorize(split_arr[0].dims()), 0.0, x.dtype());
+      result = full<T>(
+          common::vectorize(split_arr[0].dims()), 0.0, x.dtype(), x.place());
       for (int j = 0; j < static_cast<int>(split_arr.size()); j++) {
         result = split_arr[j] + result;
       }
@@ -1960,7 +2048,7 @@ void p_norm_grad(const Tensor& x,
     Tensor x_grad_tmp;
     if (porder == 0.0) {
       // dx = 0
-      x_grad_tmp = full<T>(x.shape(), 0, x.dtype());
+      x_grad_tmp = full<T>(x.shape(), 0, x.dtype(), x.place());
     } else {
       /* generic case formula:
           dx = {
@@ -1987,7 +2075,7 @@ void p_norm_grad(const Tensor& x,
         x_grad_tmp = x / expand_out;
         // fill zero to avoid division by zero
         auto _zero_tensor =
-            full<T>(common::vectorize(x.dims()), 0.0, x.dtype());
+            full<T>(common::vectorize(x.dims()), 0.0, x.dtype(), x.place());
         auto finite_mask = isfinite<T>(x_grad_tmp);
         x_grad_tmp = where<T>(finite_mask, x_grad_tmp, _zero_tensor);
         x_grad_tmp = expand_out_grad * (x_grad_tmp);

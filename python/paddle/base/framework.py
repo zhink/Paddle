@@ -1946,7 +1946,7 @@ class Variable(metaclass=VariableMetaClass):
         Get the Gradient of Current Variable
 
         Returns:
-            ndarray or tuple of ndarray: if Variable's type is LoDTensor, return numpy value of the gradient of current Variable, if Variable's type is SelectedRows, return tuple of ndarray, first element of tuple is numpy value of the gradient of current Variable, second element of tuple is numpy value of the rows of current Variable.
+            ndarray or tuple of ndarray: if Variable's type is DenseTensor, return numpy value of the gradient of current Variable, if Variable's type is SelectedRows, return tuple of ndarray, first element of tuple is numpy value of the gradient of current Variable, second element of tuple is numpy value of the rows of current Variable.
 
         Examples:
             .. code-block:: python
@@ -2876,7 +2876,7 @@ class Variable(metaclass=VariableMetaClass):
 
         if not (isinstance(value, np.ndarray) or hasattr(value, "__array__")):
             raise TypeError(
-                f"`value` should be `numpy.ndarray` or `LoDTensor`, but received {type(value)}."
+                f"`value` should be `numpy.ndarray` or `DenseTensor`, but received {type(value)}."
             )
 
         if scope is not None and not isinstance(scope, core._Scope):

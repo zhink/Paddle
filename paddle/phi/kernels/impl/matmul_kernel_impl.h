@@ -1851,7 +1851,7 @@ MatmulJudgeDtypeKernel(const Context& ctx,
                        DenseTensor* out,
                        bool transpose_x,
                        bool transpose_y) {
-#if defined(PADDLE_WITH_CUDA) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
+#if defined(PADDLE_WITH_CUDA)
   if constexpr (std::is_same<Context, phi::GPUContext>::value &&
                 std::is_same<T, int8_t>::value) {
     if (x.dtype() == phi::DataType::INT8 && x_dims[0] <= 4 &&

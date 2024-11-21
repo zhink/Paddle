@@ -292,9 +292,9 @@ def to_static(
             flag = ENV_ENABLE_SOT.get()
             full_graph = not flag
 
-        if sys.version_info >= (3, 13) and not full_graph:
+        if sys.version_info >= (3, 14) and not full_graph:
             warnings.warn(
-                "full_graph=False is not supported in Python 3.13+. Set full_graph=True automatically"
+                "full_graph=False is not supported in Python 3.14+. Set full_graph=True automatically"
             )
             full_graph = True
 
@@ -1536,7 +1536,7 @@ def load(
     .. note::
         If you load model saved by ``paddle.static.save_inference_model`` ,
         there will be the following limitations when using it in fine-tuning:
-        1. Imperative mode do not support LoDTensor. All original model's feed targets or parameters that depend on LoD are temporarily unavailable.
+        1. Imperative mode do not support DenseTensor. All original model's feed targets or parameters that depend on LoD are temporarily unavailable.
         2. All saved model's feed targets need to be passed into TranslatedLayer's forward function.
         3. The variable's ``stop_gradient`` information is lost and can not be recovered.
         4. The parameter's ``trainable`` information is lost and can not be recovered.
